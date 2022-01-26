@@ -1,5 +1,15 @@
 mod passRecord ;
 mod cli ;
+
+use cli::{
+    Cli, Parser
+} ;
+use passRecord::{
+    PassRecord, PRError
+};
+use std::{
+    path::Path
+} ;
     // let pwd = b"pass" ;
     // let salt = SaltString::generate(&mut OsRng);
     // let hash = Pbkdf2.hash_password(pwd, &salt).unwrap().to_string();
@@ -13,17 +23,17 @@ mod cli ;
     // let res = Pbkdf2.verify_password(pwd.as_bytes(), &parsed) ;
 
     // println!("{:?}", &res) ;
-fn main() {
-    use cli::{
-        Cli, Parser
-    } ;
-    let args = {
-        Cli::parse ()
-    } ;
-
-    let name = "Hopacha" ;
+fn main() -> Result<(), PRError> {
+    let args = Cli::parse() ;
     match args {
-        Cli::New {name: newname} => println!("yoba {}, {}", name, newname),
-        Cli::Repeat {..} => println!("boba"),
+        Cli::New {name} => {
+            let mut pass = PassRecord::init(Path::new("~/.passbaker/"))? ;
+            pass.seedCyccle() ;
+            Ok(())
+        },
+        Cli::Repeat {..} => {
+            println!("haha");
+            Ok(())
+        }
     }
 }
