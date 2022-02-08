@@ -14,7 +14,7 @@ use std::todo ;
 
 pub struct PassRecord<'a> {
     hash: PasswordHash<'a>,
-    records: Vec<PassEnter>
+    records: Vec<PassAttempt>
 }
 
 #[derive(Debug)]
@@ -53,7 +53,7 @@ impl <'a> PassRecord<'a> {
     }
 }
 
-pub struct PassEnter {
+pub struct PassAttempt {
     date: DateTime<Utc>,
     result: PassResult
 }

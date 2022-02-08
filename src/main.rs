@@ -1,10 +1,10 @@
-mod passRecord ;
+mod pass_record ;
 mod cli ;
 
 use cli::{
     Cli, Parser
 } ;
-use passRecord::{
+use pass_record::{
     PassRecord, PRError
 };
 use std::{
