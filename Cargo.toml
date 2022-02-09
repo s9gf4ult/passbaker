@@ -10,3 +10,4 @@ clap = { features = ["derive"] }
 pbkdf2 = "0.10"
 rand_core = { version = "0.6", features = ["std"] }
 chrono = "0.4"
+rpassword = "5.0"
