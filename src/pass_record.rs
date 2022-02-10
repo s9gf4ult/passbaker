@@ -37,14 +37,14 @@ impl <'a> PassRecord<'a> {
     // Initiates the new record by asking the password twice and creating all
     // files for further operation.
     pub fn init ( dir: &Path,
+                  salt: &'a SaltString,
                   asker: &(dyn Fn() -> String),
                   notifier: &(dyn Fn(&str) -> ()),
                   name: String
     ) -> Result<PassRecord<'a> ,PRError> {
-        let salt = SaltString::generate(&mut OsRng) ;
         let hash = {
             let pass = asker() ; // Ask user for password
-            Pbkdf2.hash_password(pass.as_bytes(), &salt.clone())?
+            Pbkdf2.hash_password(pass.as_bytes(), salt)?
         } ;
         notifier("Repeat the password") ;
         let pass2 = asker() ; // Repeat user password and recheck it
