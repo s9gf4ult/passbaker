@@ -1,28 +1,54 @@
-use pbkdf2 ::{
-    Pbkdf2,
-    password_hash::{
-        rand_core::OsRng,
-        SaltString, PasswordHasher, PasswordVerifier, PasswordHash,
-        errors as password_hash_errors
-    },
-};
+use pbkdf2::Pbkdf2 ;
 use std::io ;
 use std::path::{Path} ;
 use chrono::prelude::* ;
 use std::todo ;
 use std::fs::* ;
+use serde::* ;
+use password_hash:: {
+    rand_core::OsRng,
+    SaltString, PasswordHasher, PasswordVerifier, PasswordHash,
+    errors as password_hash_errors
+} ;
+use toml::ser::Error as TomlError ;
 
 pub struct PassRecord<'a> {
-    hash: PasswordHash<'a>,
+    header: PassHeader<'a>,
+    records: Vec<PassAttempt>,
+}
+
+fn password_hash_serialize<'a, S>(p: &PasswordHash<'a>, ser: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    ser.serialize_str(& p.to_string())
+}
+
+
+#[derive(Serialize)]
+pub struct PassHeader<'a> {
     name: String,
-    records: Vec<PassAttempt>
+    created: DateTime<Utc>,
+    #[serde(serialize_with = "password_hash_serialize")]
+    hash: PasswordHash<'a>,
+}
+
+pub struct PassAttempt {
+    date: DateTime<Utc>,
+    result: PassResult
+}
+
+pub enum PassResult {
+    Success,
+    Miss
 }
 
 #[derive(Debug)]
 pub enum PRError {
     PasswordHashError(password_hash_errors::Error),
     IOError(io::Error),
-    HomeDirectoryError(String)
+    HomeDirectoryError(String),
+    TomlError(TomlError),
 }
 
 impl From<password_hash_errors::Error> for PRError {
@@ -31,6 +57,10 @@ impl From<password_hash_errors::Error> for PRError {
 
 impl From<io::Error> for PRError {
     fn from(pe: io::Error) -> PRError { PRError::IOError(pe) }
+}
+
+impl From<TomlError> for PRError {
+    fn from(e: TomlError) -> PRError { PRError::TomlError(e) }
 }
 
 impl <'a> PassRecord<'a> {
@@ -50,6 +80,27 @@ impl <'a> PassRecord<'a> {
         let pass2 = asker() ; // Repeat user password and recheck it
         Pbkdf2.verify_password(pass2.as_bytes(), &hash)? ;
 
+        PassRecord::checkWorkDir(dir)? ;
+        let header = PassHeader {
+            created: Utc::now(),
+            hash: hash,
+            name: name,
+        } ;
+
+        header.createConfigFile(dir)? ;
+
+        let result = PassRecord {
+            header: header,
+            records: vec![],
+        } ;
+        Ok(result)
+    }
+
+    pub fn seedCyccle(&self) {
+        todo!();
+    }
+
+    fn checkWorkDir(dir: &Path) -> Result<(), PRError> {
         match dir.metadata() {
             Err(e) => match e.kind() {
                 io::ErrorKind::NotFound => {
@@ -64,26 +115,23 @@ impl <'a> PassRecord<'a> {
                 }
             }
         } ;
-
-        let result = PassRecord {
-            hash: hash,
-            name: name,
-            records: vec![]
-        } ;
-
-        Ok(result)
-    }
-    pub fn seedCyccle(&self) {
-        todo!();
+        Ok(())
     }
 }
 
-pub struct PassAttempt {
-    date: DateTime<Utc>,
-    result: PassResult
-}
-
-pub enum PassResult {
-    Success,
-    Miss
+impl <'a> PassHeader<'a> {
+    fn createConfigFile(&self, dir: &Path) -> Result<(), PRError> {
+        let s = toml::to_string_pretty(self)? ;
+        let path = dir.join( &(self.name.clone() + ".toml") ) ;
+        match path.metadata() {
+            Err(e) => match e.kind() {
+                // If file does not exists then this is because we are creating new one
+                io::ErrorKind::NotFound => (),
+                _ => return Err(PRError::from(e)),
+            },
+            Ok(_meta) => return Err(PRError::HomeDirectoryError("File already exists".to_string())),
+        }
+        write(path, s.as_bytes());
+        Ok(())
+    }
 }
