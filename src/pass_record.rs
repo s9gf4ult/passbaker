@@ -1,7 +1,7 @@
 use core::fmt ;
 use pbkdf2::Pbkdf2 ;
 use std::io ;
-use std::path::{Path} ;
+use std::path::{Path, PathBuf} ;
 use chrono::prelude::* ;
 use std::todo ;
 use std::fs::* ;
@@ -14,6 +14,11 @@ use password_hash:: {
     errors as password_hash_errors
 } ;
 use toml::ser::Error as TomlError ;
+
+pub trait Interactor {
+    fn showMessage(&self, s: &str) ;
+    fn readPassword(&self) -> String ;
+}
 
 pub struct PassRecord<'a> {
     header: PassHeader<'a>,
@@ -93,18 +98,17 @@ impl From<TomlError> for PRError {
 impl <'a> PassRecord<'a> {
     // Initiates the new record by asking the password twice and creating all
     // files for further operation.
-    pub fn init ( dir: &Path,
-                  salt: &'a SaltString,
-                  asker: &(dyn Fn() -> String),
-                  notifier: &(dyn Fn(&str) -> ()),
-                  name: String
+    pub fn init<'b> ( dir: &PathBuf,
+                      salt: &'a SaltString,
+                      inter: impl Interactor,
+                      name: String
     ) -> Result<PassRecord<'a> ,PRError> {
         let hash = {
-            let pass = asker() ; // Ask user for password
+            let pass = inter.readPassword() ;
             Pbkdf2.hash_password(pass.as_bytes(), salt)?
         } ;
-        notifier("Repeat the password") ;
-        let pass2 = asker() ; // Repeat user password and recheck it
+        inter.showMessage("Repeat the password") ;
+        let pass2 = inter.readPassword() ;
         Pbkdf2.verify_password(pass2.as_bytes(), &hash)? ;
 
         PassRecord::checkWorkDir(dir)? ;
@@ -114,7 +118,7 @@ impl <'a> PassRecord<'a> {
             name: name,
         } ;
 
-        header.createConfigFile(dir)? ;
+        header.createConfigs(dir)? ;
 
         let result = PassRecord {
             header: header,
@@ -147,9 +151,18 @@ impl <'a> PassRecord<'a> {
 }
 
 impl <'a> PassHeader<'a> {
-    fn createConfigFile(&self, dir: &Path) -> Result<(), PRError> {
+    fn configFileName(&self, dir: &PathBuf) -> PathBuf {
+        dir.join( &(self.name.clone() + ".toml") )
+    }
+
+    fn attemptsDirName(&self, dir: &PathBuf) -> PathBuf {
+        dir.join( &self.name )
+    }
+
+    fn createConfigs(&self, dir: &PathBuf) -> Result<(), PRError> {
         let s = toml::to_string_pretty(self)? ;
-        let path = dir.join( &(self.name.clone() + ".toml") ) ;
+        let dirPath = self.attemptsDirName(dir) ;
+        let path = self.configFileName(dir) ;
         match path.metadata() {
             Err(e) => match e.kind() {
                 // If file does not exists then this is because we are creating new one
@@ -159,6 +172,17 @@ impl <'a> PassHeader<'a> {
             Ok(_meta) => return Err(PRError::HomeDirectoryError("File already exists".to_string())),
         }
         write(path, s.as_bytes());
+        match dirPath.metadata() {
+            Err(e) => match e.kind() {
+                io::ErrorKind::NotFound => {
+                    create_dir(dirPath) ;
+                },
+                _ => return Err(PRError::from(e)),
+            },
+            Ok(meta) => if ! meta.file_type().is_dir() {
+                return Err(PRError::HomeDirectoryError("File exists but this is not a directory".to_string())) ;
+            }
+        } ;
         Ok(())
     }
 }
