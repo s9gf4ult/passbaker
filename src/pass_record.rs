@@ -107,6 +107,7 @@ pub struct PassHeader<'a> {
     #[serde(serialize_with = "password_hash_serialize")]
     #[serde(deserialize_with = "password_hash_deserialize", borrow)]
     hash: PasswordHash<'a>,
+    options: Options,
 }
 
 pub struct PassAttempt {
@@ -160,6 +161,7 @@ impl <'a> PassRecord<'a> {
             created: Utc::now(),
             hash: hash,
             name: name,
+            options: Default::default()
         } ;
 
         header.createConfigs(dir)? ;
