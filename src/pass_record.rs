@@ -19,54 +19,23 @@ use password_hash:: {
     errors as password_hash_errors
 } ;
 use toml::ser::Error as TomlError ;
+use csv::Writer;
+
+use crate::{
+    options::*,
+    err::*
+};
 
 pub trait Interactor {
     fn showMessage(&self, s: &str) ;
     fn readPassword(&self) -> String ;
 }
 
-impl Default for Options {
-    fn default() -> Options {
-        Options {
-            seed: TimingOpts
-            { timeFactor: 2.0,
-              maxInterval: 3600,
-              completion: Some(10)
-            },
-            consolidation: TimingOpts
-            { timeFactor: 2.0 ,
-              maxInterval: 3600*24, // Repeat at least every day
-              completion: Some(10),
-            },
-            retention: TimingOpts
-            { timeFactor: 3.0 ,
-              maxInterval: 3600*24*7, // At least every week
-              completion: None
-            },
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Options {
-    seed: TimingOpts,
-    consolidation: TimingOpts,
-    retention: TimingOpts,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct TimingOpts {
-    // How many times the time intervals must increase after successful attempt
-    timeFactor: f64,
-    // Interval in secs
-    maxInterval: u64,
-    // How mucs successful attempts we need to complete the stage
-    completion: Option<u64>,
-}
+pub struct PasswordAttempts (Vec<Box<PassAttempt>>) ;
 
 pub struct PassRecord<'a> {
     header: PassHeader<'a>,
-    records: Vec<PassAttempt>,
+    attempts: PasswordAttempts,
 }
 
 fn password_hash_serialize<'a, S>(p: &PasswordHash<'a>, ser: S) -> Result<S::Ok, S::Error>
@@ -110,35 +79,18 @@ pub struct PassHeader<'a> {
     options: Options,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct PassAttempt {
     date: DateTime<Utc>,
-    result: PassResult
+    result: AttemptResult,
 }
 
-pub enum PassResult {
+#[derive(Serialize, Deserialize)]
+pub enum AttemptResult {
     Success,
     Miss
 }
 
-#[derive(Debug)]
-pub enum PRError {
-    PasswordHashError(password_hash_errors::Error),
-    IOError(io::Error),
-    HomeDirectoryError(String),
-    TomlError(TomlError),
-}
-
-impl From<password_hash_errors::Error> for PRError {
-    fn from(pe: password_hash_errors::Error) -> PRError { PRError::PasswordHashError(pe) }
-}
-
-impl From<io::Error> for PRError {
-    fn from(pe: io::Error) -> PRError { PRError::IOError(pe) }
-}
-
-impl From<TomlError> for PRError {
-    fn from(e: TomlError) -> PRError { PRError::TomlError(e) }
-}
 
 impl <'a> PassRecord<'a> {
     // Initiates the new record by asking the password twice and creating all
@@ -168,7 +120,7 @@ impl <'a> PassRecord<'a> {
 
         let result = PassRecord {
             header: header,
-            records: vec![],
+            attempts: PasswordAttempts(vec![]),
         } ;
         Ok(result)
     }
@@ -196,6 +148,42 @@ impl <'a> PassRecord<'a> {
     }
 }
 
+fn dirExists(dir: &PathBuf) -> Result<(), PRError> {
+    match dir.metadata() {
+        Err(e) => match e.kind() {
+            io::ErrorKind::NotFound => {
+                create_dir(dir) ;
+            },
+            _ => return Err(PRError::from(e)),
+        },
+        Ok(meta) => if ! meta.file_type().is_dir() {
+            return Err(PRError::HomeDirectoryError("File exists but this is not a directory".to_string())) ;
+        }
+    };
+    Ok(())
+}
+
+impl PasswordAttempts {
+    fn registerAttempt(&mut self, dir: &PathBuf, item: Box<PassAttempt>) -> Result<(), PRError> {
+        let filename: Result<PathBuf, PRError> = {
+            dirExists(dir)? ;
+            let dateStr = item.date.date().to_string() ;
+            let f = dateStr + ".csv" ;
+            Ok(dir.clone().join(f))
+        };
+        let filename = filename? ;
+        let mut writer = Writer::from_path(&filename)? ;
+        writer.serialize(&item)? ;
+        writer.flush()? ;
+        self.0.push(item) ;
+        Ok(())
+    }
+
+    fn nextAttempt(&self, created: DateTime<Utc>, opts: &Options) -> Result<DateTime<Utc>, PRError> {
+        todo!()
+    }
+}
+
 impl <'a> PassHeader<'a> {
     fn configFileName(&self, dir: &PathBuf) -> PathBuf {
         dir.join( &(self.name.clone() + ".toml") )
@@ -217,18 +205,8 @@ impl <'a> PassHeader<'a> {
             },
             Ok(_meta) => return Err(PRError::HomeDirectoryError("File already exists".to_string())),
         }
+        dirExists(&dirPath)? ;
         write(path, s.as_bytes());
-        match dirPath.metadata() {
-            Err(e) => match e.kind() {
-                io::ErrorKind::NotFound => {
-                    create_dir(dirPath) ;
-                },
-                _ => return Err(PRError::from(e)),
-            },
-            Ok(meta) => if ! meta.file_type().is_dir() {
-                return Err(PRError::HomeDirectoryError("File exists but this is not a directory".to_string())) ;
-            }
-        } ;
         Ok(())
     }
 }

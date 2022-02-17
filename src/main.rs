@@ -1,10 +1,13 @@
 mod pass_record ;
 mod cli ;
+mod options ;
+mod err ;
 
 use cli::{
     Cli, Parser
 } ;
 use pass_record::* ;
+use err::PRError ;
 use std::{
     path::Path
 } ;
