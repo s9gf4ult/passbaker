@@ -2,6 +2,8 @@ mod pass_record ;
 mod cli ;
 mod options ;
 mod err ;
+mod header ;
+mod aux ;
 
 use cli::{
     Cli, Parser
