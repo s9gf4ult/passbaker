@@ -5,7 +5,7 @@ use password_hash:: {
 use toml::ser::Error as TomlError ;
 use csv;
 use std:: {
-    io,
+    io, num::TryFromIntError,
 } ;
 
 
@@ -16,6 +16,7 @@ pub enum PRError {
     HomeDirectoryError(String),
     TomlError(TomlError),
     CsvError(csv::Error),
+    IntError(TryFromIntError),
 }
 
 impl From<password_hash_errors::Error> for PRError {
@@ -32,4 +33,9 @@ impl From<TomlError> for PRError {
 
 impl From<csv::Error> for PRError {
     fn from(e: csv::Error) -> PRError { PRError::CsvError(e) }
+}
+
+impl From<TryFromIntError> for PRError {
+    fn from(e: TryFromIntError) -> PRError { PRError::IntError(e) }
+
 }

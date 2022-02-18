@@ -1,8 +1,6 @@
-use serde:: {
-    *,
-} ;
+use serde::{Serialize, Deserialize} ;
 use chrono::{
-    prelude::*,
+    prelude::*, Duration,
 } ;
 use std:: {
     path::{PathBuf},
@@ -31,7 +29,7 @@ pub enum AttemptResult {
 }
 
 impl PasswordAttempts {
-    fn registerAttempt(&mut self, dir: &PathBuf, item: Box<PassAttempt>) -> Result<(), PRError> {
+    fn register_attempt(&mut self, dir: &PathBuf, item: Box<PassAttempt>) -> Result<(), PRError> {
         let filename: Result<PathBuf, PRError> = {
             dirExists(dir)? ;
             let dateStr = item.timestamp.date().to_string() ;
@@ -46,11 +44,54 @@ impl PasswordAttempts {
         Ok(())
     }
 
-    fn nextAttempt(
+    fn next_attempt(
         &self,
         created: DateTime<Utc>,
         opts: &Options
-    ) -> Result<DateTime<Utc>, PRError> {
-        todo!()
+    ) -> Result<(Stage, DateTime<Utc>), PRError> {
+        let mut duration = Duration::seconds(opts.initial.try_into()?) ;
+        let mut res = created + duration ;
+        let mut stage = Stage::Seed ;
+        let mut successful: u64 = 0 ; // Successful attempts count
+        let seedComplete = opts.seed.completion ;
+        let consComplete = seedComplete.and_then(|seed| {
+            opts.consolidation.completion.and_then(|cons| { Some(seed + cons) })
+        }) ;
+        let retentionComplete = consComplete.and_then(|cons| {
+            opts.retention.completion.and_then(|ret| { Some(cons + ret)})
+        }) ;
+
+        for attempt in &self.0 {
+            if let Success = &attempt.result {
+                successful += 1 ;
+            };
+            match &stage {
+                Seed => match seedComplete {
+                    Some(complete) if successful >= complete => {
+                        let stage = Stage::Consolidate ;
+                    },
+                    _ => (),
+                },
+                Consolidate => match consComplete {
+                    Some(complete) if successful >= complete => {
+                        let stage = Stage::Retent ;
+                    },
+                    _ => (),
+                },
+                _ => (),
+            } ;
+            let timings = opts.stage_timings(&stage) ;
+            let factor = match &attempt.result {
+                Success => timings.succFactor,
+                Miss =>    timings.missFactor,
+            } ;
+            let prevSecs = duration.num_seconds() as f64 ;
+            let newSecs: i64 = timings.maxInterval.min(
+                (factor * prevSecs).round() as u64
+            ).try_into()? ;
+            duration = Duration::seconds(newSecs) ;
+            res = attempt.timestamp + duration ;
+        };
+        Ok((stage, res))
     }
 }
