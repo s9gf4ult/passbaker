@@ -4,6 +4,7 @@ mod options ;
 mod err ;
 mod header ;
 mod aux ;
+mod attempts ;
 
 use cli::{
     Cli, Parser
