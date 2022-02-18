@@ -18,8 +18,8 @@ pub struct PasswordAttempts (pub Vec<Box<PassAttempt>>) ;
 
 #[derive(Serialize, Deserialize)]
 pub struct PassAttempt {
-    timestamp: DateTime<Utc>,
-    result: AttemptResult,
+    pub timestamp: DateTime<Utc>,
+    pub result: AttemptResult,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -29,7 +29,7 @@ pub enum AttemptResult {
 }
 
 impl PasswordAttempts {
-    fn register_attempt(&mut self, dir: &PathBuf, item: Box<PassAttempt>) -> Result<(), PRError> {
+    pub fn register_attempt(&mut self, dir: &PathBuf, item: Box<PassAttempt>) -> Result<(), PRError> {
         let filename: Result<PathBuf, PRError> = {
             dirExists(dir)? ;
             let dateStr = item.timestamp.date().to_string() ;
@@ -44,13 +44,13 @@ impl PasswordAttempts {
         Ok(())
     }
 
-    fn next_attempt(
+    pub fn next_attempt(
         &self,
-        created: DateTime<Utc>,
+        created: &DateTime<Utc>,
         opts: &Options
     ) -> Result<(Stage, DateTime<Utc>), PRError> {
         let mut duration = Duration::seconds(opts.initial.try_into()?) ;
-        let mut res = created + duration ;
+        let mut res = *created + duration ;
         let mut stage = Stage::Seed ;
         let mut successful: u64 = 0 ; // Successful attempts count
         let seedComplete = opts.seed.completion ;

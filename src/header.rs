@@ -1,9 +1,10 @@
+use pbkdf2::Pbkdf2 ;
 use serde:: {
     *, de, de::Visitor
 } ;
 use core::fmt ;
 use password_hash:: {
-    PasswordHash,
+    PasswordHash, PasswordVerifier,
 } ;
 use chrono::{
     prelude::*,
@@ -66,8 +67,16 @@ impl <'a> PassHeader<'a> {
         dir.join( &(self.name.clone() + ".toml") )
     }
 
-    fn attemptsDirName(&self, dir: &PathBuf) -> PathBuf {
+    pub fn attemptsDirName(&self, dir: &PathBuf) -> PathBuf {
         dir.join( &self.name )
+    }
+
+    pub fn check_pass(&self, s: &str) -> Result<bool, PRError> {
+        match Pbkdf2.verify_password(s.as_bytes(), &self.hash) {
+            Ok(()) => Ok(true),
+            Err(Password) => Ok(false),
+            Err(e) => Err(PRError::from(e)),
+        }
     }
 
     pub fn createConfigs(&self, dir: &PathBuf) -> Result<(), PRError> {

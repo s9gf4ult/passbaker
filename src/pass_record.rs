@@ -2,9 +2,11 @@ use pbkdf2::Pbkdf2 ;
 use std:: {
     io,
     path::{Path, PathBuf},
+    thread::sleep,
     default::Default,
     todo,
     fs::*,
+    time::Duration,
 } ;
 use chrono::{
     prelude::*
@@ -16,6 +18,7 @@ use crate::{
     err::*,
     header::*,
     attempts::*,
+    options::*,
 };
 
 
@@ -30,11 +33,11 @@ pub struct PassRecord<'a> {
 }
 
 impl <'a> PassRecord<'a> {
-    // Initiates the new record by asking the password twice and creating all
-    // files for further operation.
+    /// Initiates the new record by asking the password twice and creating all
+    /// files for further operation.
     pub fn init<'b> ( dir: &PathBuf,
                       salt: &'a SaltString,
-                      inter: impl Interactor,
+                      inter: &impl Interactor,
                       name: String
     ) -> Result<PassRecord<'a> ,PRError> {
         let hash = {
@@ -62,8 +65,29 @@ impl <'a> PassRecord<'a> {
         Ok(result)
     }
 
-    pub fn seedCyccle(&self) {
-        todo!();
+    pub fn seedCyccle(&mut self, home: &PathBuf, inter: &impl Interactor) -> Result<(), PRError> {
+        while let (Seed, next) =
+            self.attempts.next_attempt(&self.header.created, &self.header.options)? {
+                let mut now = Utc::now() ;
+                while next > now {
+                    sleep(Duration::from_secs(1));
+                    now = Utc::now() ;
+                }
+                inter.showMessage("Enter password: ") ;
+                let s = inter.readPassword() ;
+                let res = if self.header.check_pass(&s)? {
+                    AttemptResult::Success
+                } else {
+                    AttemptResult::Miss
+                };
+                let attempt = Box::new(PassAttempt{
+                    timestamp: Utc::now(),
+                    result: res,
+                });
+                let dir = self.header.attemptsDirName(home);
+                self.attempts.register_attempt(&dir, attempt);
+        };
+        todo!() ;
     }
 
     fn checkWorkDir(dir: &Path) -> Result<(), PRError> {
