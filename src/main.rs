@@ -11,9 +11,6 @@ use cli::{
 } ;
 use pass_record::* ;
 use err::PRError ;
-use std::{
-    path::Path
-} ;
 use pbkdf2::password_hash::{
     SaltString,
     rand_core::OsRng

@@ -9,20 +9,12 @@ use std:: {
 use chrono::{
     prelude::*
 } ;
-use serde:: {
-    *,
-} ;
 use password_hash:: {
-    SaltString, PasswordHasher, PasswordVerifier, PasswordHash,
-    errors as password_hash_errors
+    SaltString, PasswordHasher, PasswordVerifier,
 } ;
-use toml::ser::Error as TomlError ;
-use csv::Writer;
 use crate::{
-    options::*,
     err::*,
     header::*,
-    aux::*,
     attempts::*,
 };
 

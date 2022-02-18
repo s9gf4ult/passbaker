@@ -3,18 +3,14 @@ use serde:: {
 } ;
 use core::fmt ;
 use password_hash:: {
-    rand_core::OsRng,
-    SaltString, PasswordHasher, PasswordVerifier, PasswordHash,
-    errors as password_hash_errors
+    PasswordHash,
 } ;
 use chrono::{
-    prelude::*, Duration
+    prelude::*,
 } ;
 use std:: {
     io,
-    path::{Path, PathBuf},
-    default::Default,
-    todo,
+    path::{PathBuf},
     fs::*,
 } ;
 use crate::{
