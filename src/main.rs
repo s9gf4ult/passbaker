@@ -23,10 +23,10 @@ use home::home_dir ;
 struct ConsoleInter ;
 
 impl Interactor for ConsoleInter {
-    fn show_message(&self, s: &str) {
+    fn show_message(&mut self, s: &str) {
         print!("{}\n", s) ;
     }
-    fn read_password(&self) -> String {
+    fn read_password(&mut self) -> String {
         read_password_from_tty(Some("Password: ")).unwrap()
     }
 }
@@ -35,7 +35,7 @@ fn main() -> Result<(), PRError> {
     let args = Cli::parse() ;
     match args {
         Cli::New {name} => {
-            let i = ConsoleInter;
+            let mut i = ConsoleInter;
             let salt = SaltString::generate(&mut OsRng) ;
             let home = match home_dir() {
                 None => return Err(PRError::HomeDirectoryError("Can not find home dir".to_string())),
@@ -44,10 +44,10 @@ fn main() -> Result<(), PRError> {
             let mut pass = PassRecord::init(
                 &home,
                 &salt,
-                &i,
+                &mut i,
                 name,
             )? ;
-            pass.seed_cycle(&home, &i)? ;
+            pass.seed_cycle(&home, &mut i)? ;
             Ok(())
         },
         Cli::Repeat {..} => {

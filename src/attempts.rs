@@ -4,8 +4,9 @@ use chrono::{
 } ;
 use std:: {
     path::{PathBuf},
+    fs::*,
 } ;
-use csv::Writer;
+use csv::{WriterBuilder} ;
 use crate::{
     err::*,
     aux::*,
@@ -29,14 +30,21 @@ pub enum AttemptResult {
 
 impl PasswordAttempts {
     pub fn register_attempt(&mut self, dir: &PathBuf, item: Box<PassAttempt>) -> Result<(), PRError> {
-        let filename: Result<PathBuf, PRError> = {
+        let filename = {
             dir_exists(dir)? ;
             let date_str = item.timestamp.date().to_string() ;
             let f = date_str + ".csv" ;
-            Ok(dir.clone().join(f))
-        };
-        let filename = filename? ;
-        let mut writer = Writer::from_path(&filename)? ;
+            dir.join(f)
+        } ;
+        let file = OpenOptions::new()
+            .read(false)
+            .create(true)
+            .write(true)
+            .truncate(false)
+            .append(true)
+            .open(&filename)? ;
+        let mut writer = WriterBuilder::new()
+            .has_headers(false).from_writer(&file) ;
         writer.serialize(&item)? ;
         writer.flush()? ;
         self.0.push(item) ;

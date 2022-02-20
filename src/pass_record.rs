@@ -23,8 +23,11 @@ use crate::{
 
 
 pub trait Interactor {
-    fn show_message(&self, s: &str) ;
-    fn read_password(&self) -> String ;
+    fn read_password(&mut self) -> String ;
+    fn show_message(&mut self, s: &str) ;
+    fn pay_attention(&mut self, s: &str) {
+        self.show_message(s);
+    }
 }
 
 pub struct PassRecord<'a> {
@@ -37,7 +40,7 @@ impl <'a> PassRecord<'a> {
     /// files for further operation.
     pub fn init<'b> ( dir: &PathBuf,
                       salt: &'a SaltString,
-                      inter: &impl Interactor,
+                      inter: &mut impl Interactor,
                       name: String
     ) -> Result<PassRecord<'a> ,PRError> {
         let hash = {
@@ -65,26 +68,32 @@ impl <'a> PassRecord<'a> {
         Ok(result)
     }
 
-    pub fn seed_cycle(&mut self, home: &PathBuf, inter: &impl Interactor) -> Result<(), PRError> {
+    pub fn seed_cycle(&mut self, home: &PathBuf, inter: &mut impl Interactor) -> Result<(), PRError> {
         while let (Stage::Seed, next) =
             self.attempts.next_attempt(&self.header.created, &self.header.options)? {
                 let mut now = Utc::now() ;
                 while next > now {
                     sleep(Duration::from_secs(1));
                     now = Utc::now() ;
-                }
-                inter.show_message("Enter password: ") ;
-                let s = inter.read_password() ;
-                let res = if self.header.check_pass(&s)? {
-                    AttemptResult::Success
-                } else {
-                    AttemptResult::Miss
-                };
+                    let msg = format!("There is {} seconds left", (next - now).num_seconds()) ;
+                    inter.show_message(&msg);
+                } ;
+                let dir = self.header.attempts_dir_name(home);
+                inter.pay_attention("Enter password:") ;
+                let mut s = inter.read_password() ;
+                while ! self.header.check_pass(&s)? {
+                    let attempt = Box::new(PassAttempt{
+                        timestamp: Utc::now(),
+                        result: AttemptResult::Miss,
+                    });
+                    self.attempts.register_attempt(&dir, attempt)? ;
+                    inter.show_message("Wrong password, try again") ;
+                    s = inter.read_password() ;
+                } ;
                 let attempt = Box::new(PassAttempt{
                     timestamp: Utc::now(),
-                    result: res,
+                    result: AttemptResult::Success,
                 });
-                let dir = self.header.attempts_dir_name(home);
                 self.attempts.register_attempt(&dir, attempt)? ;
         };
         todo!() ;
