@@ -56,7 +56,7 @@ impl <'a> PassRecord<'a> {
             options: Default::default()
         } ;
 
-        header.createConfigs(dir)? ;
+        header.create_configs(dir)? ;
 
         let result = PassRecord {
             header: header,
@@ -84,7 +84,7 @@ impl <'a> PassRecord<'a> {
                     timestamp: Utc::now(),
                     result: res,
                 });
-                let dir = self.header.attemptsDirName(home);
+                let dir = self.header.attempts_dir_name(home);
                 self.attempts.register_attempt(&dir, attempt)? ;
         };
         todo!() ;

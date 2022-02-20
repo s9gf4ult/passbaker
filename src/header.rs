@@ -63,11 +63,11 @@ pub struct PassHeader<'a> {
 }
 
 impl <'a> PassHeader<'a> {
-    fn configFileName(&self, dir: &PathBuf) -> PathBuf {
+    fn config_file_name(&self, dir: &PathBuf) -> PathBuf {
         dir.join( &(self.name.clone() + ".toml") )
     }
 
-    pub fn attemptsDirName(&self, dir: &PathBuf) -> PathBuf {
+    pub fn attempts_dir_name(&self, dir: &PathBuf) -> PathBuf {
         dir.join( &self.name )
     }
 
@@ -79,10 +79,10 @@ impl <'a> PassHeader<'a> {
         }
     }
 
-    pub fn createConfigs(&self, dir: &PathBuf) -> Result<(), PRError> {
+    pub fn create_configs(&self, dir: &PathBuf) -> Result<(), PRError> {
         let s = toml::to_string_pretty(self)? ;
-        let dirPath = self.attemptsDirName(dir) ;
-        let path = self.configFileName(dir) ;
+        let dir_path = self.attempts_dir_name(dir) ;
+        let path = self.config_file_name(dir) ;
         match path.metadata() {
             Err(e) => match e.kind() {
                 // If file does not exists then this is because we are creating new one
@@ -91,8 +91,8 @@ impl <'a> PassHeader<'a> {
             },
             Ok(_meta) => return Err(PRError::HomeDirectoryError("File already exists".to_string())),
         }
-        dirExists(&dirPath)? ;
-        write(path, s.as_bytes());
+        dir_exists(&dir_path)? ;
+        write(path, s.as_bytes())? ;
         Ok(())
     }
 }

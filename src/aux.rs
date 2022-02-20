@@ -8,11 +8,11 @@ use crate::{
     err::*,
 } ;
 
-pub fn dirExists(dir: &PathBuf) -> Result<(), PRError> {
+pub fn dir_exists(dir: &PathBuf) -> Result<(), PRError> {
     match dir.metadata() {
         Err(e) => match e.kind() {
             io::ErrorKind::NotFound => {
-                create_dir(dir) ;
+                create_dir(dir)? ;
             },
             _ => return Err(PRError::from(e)),
         },

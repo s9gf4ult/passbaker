@@ -4,7 +4,6 @@ use chrono::{
 } ;
 use std:: {
     path::{PathBuf},
-    todo,
 } ;
 use csv::Writer;
 use crate::{
@@ -31,9 +30,9 @@ pub enum AttemptResult {
 impl PasswordAttempts {
     pub fn register_attempt(&mut self, dir: &PathBuf, item: Box<PassAttempt>) -> Result<(), PRError> {
         let filename: Result<PathBuf, PRError> = {
-            dirExists(dir)? ;
-            let dateStr = item.timestamp.date().to_string() ;
-            let f = dateStr + ".csv" ;
+            dir_exists(dir)? ;
+            let date_str = item.timestamp.date().to_string() ;
+            let f = date_str + ".csv" ;
             Ok(dir.clone().join(f))
         };
         let filename = filename? ;
@@ -53,8 +52,8 @@ impl PasswordAttempts {
         let mut res = *created + duration ;
         let mut stage = Stage::Seed ;
         let mut successful: u64 = 0 ; // Successful attempts count
-        let seedComplete = opts.seed.completion ;
-        let consComplete = seedComplete.and_then(|seed| {
+        let seed_complete = opts.seed.completion ;
+        let cons_complete = seed_complete.and_then(|seed| {
             opts.consolidation.completion.and_then(|cons| { Some(seed + cons) })
         }) ;
 
@@ -63,13 +62,13 @@ impl PasswordAttempts {
                 successful += 1 ;
             };
             match &stage {
-                Stage::Seed => match seedComplete {
+                Stage::Seed => match seed_complete {
                     Some(complete) if successful >= complete => {
                         stage = Stage::Consolidate ;
                     },
                     _ => (),
                 },
-                Stage::Consolidate => match consComplete {
+                Stage::Consolidate => match cons_complete {
                     Some(complete) if successful >= complete => {
                         stage = Stage::Retent ;
                     },
@@ -82,11 +81,11 @@ impl PasswordAttempts {
                 AttemptResult::Success => timings.succ_factor,
                 AttemptResult::Miss =>    timings.miss_factor,
             } ;
-            let prevSecs = duration.num_seconds() as f64 ;
-            let newSecs: i64 = timings.max_interval.min(
-                (factor * prevSecs).round() as u64
+            let prev_secs = duration.num_seconds() as f64 ;
+            let new_secs: i64 = timings.max_interval.min(
+                (factor * prev_secs).round() as u64
             ).try_into()? ;
-            duration = Duration::seconds(newSecs) ;
+            duration = Duration::seconds(new_secs) ;
             res = attempt.timestamp + duration ;
         };
         Ok((stage, res))
