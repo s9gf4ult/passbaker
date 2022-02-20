@@ -23,8 +23,8 @@ use crate::{
 
 
 pub trait Interactor {
-    fn showMessage(&self, s: &str) ;
-    fn readPassword(&self) -> String ;
+    fn show_message(&self, s: &str) ;
+    fn read_password(&self) -> String ;
 }
 
 pub struct PassRecord<'a> {
@@ -41,14 +41,14 @@ impl <'a> PassRecord<'a> {
                       name: String
     ) -> Result<PassRecord<'a> ,PRError> {
         let hash = {
-            let pass = inter.readPassword() ;
+            let pass = inter.read_password() ;
             Pbkdf2.hash_password(pass.as_bytes(), salt)?
         } ;
-        inter.showMessage("Repeat the password") ;
-        let pass2 = inter.readPassword() ;
+        inter.show_message("Repeat the password") ;
+        let pass2 = inter.read_password() ;
         Pbkdf2.verify_password(pass2.as_bytes(), &hash)? ;
 
-        PassRecord::checkWorkDir(dir)? ;
+        PassRecord::check_work_dir(dir)? ;
         let header = PassHeader {
             created: Utc::now(),
             hash: hash,
@@ -65,16 +65,16 @@ impl <'a> PassRecord<'a> {
         Ok(result)
     }
 
-    pub fn seedCyccle(&mut self, home: &PathBuf, inter: &impl Interactor) -> Result<(), PRError> {
-        while let (Seed, next) =
+    pub fn seed_cycle(&mut self, home: &PathBuf, inter: &impl Interactor) -> Result<(), PRError> {
+        while let (Stage::Seed, next) =
             self.attempts.next_attempt(&self.header.created, &self.header.options)? {
                 let mut now = Utc::now() ;
                 while next > now {
                     sleep(Duration::from_secs(1));
                     now = Utc::now() ;
                 }
-                inter.showMessage("Enter password: ") ;
-                let s = inter.readPassword() ;
+                inter.show_message("Enter password: ") ;
+                let s = inter.read_password() ;
                 let res = if self.header.check_pass(&s)? {
                     AttemptResult::Success
                 } else {
@@ -85,12 +85,12 @@ impl <'a> PassRecord<'a> {
                     result: res,
                 });
                 let dir = self.header.attemptsDirName(home);
-                self.attempts.register_attempt(&dir, attempt);
+                self.attempts.register_attempt(&dir, attempt)? ;
         };
         todo!() ;
     }
 
-    fn checkWorkDir(dir: &Path) -> Result<(), PRError> {
+    fn check_work_dir(dir: &Path) -> Result<(), PRError> {
         match dir.metadata() {
             Err(e) => match e.kind() {
                 io::ErrorKind::NotFound => {

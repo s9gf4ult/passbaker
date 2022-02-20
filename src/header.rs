@@ -4,7 +4,7 @@ use serde:: {
 } ;
 use core::fmt ;
 use password_hash:: {
-    PasswordHash, PasswordVerifier,
+    PasswordHash, PasswordVerifier, errors,
 } ;
 use chrono::{
     prelude::*,
@@ -52,7 +52,7 @@ where
     de.deserialize_str(PHVisitor)
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct PassHeader<'a> {
     pub name: String,
     pub created: DateTime<Utc>,
@@ -74,7 +74,7 @@ impl <'a> PassHeader<'a> {
     pub fn check_pass(&self, s: &str) -> Result<bool, PRError> {
         match Pbkdf2.verify_password(s.as_bytes(), &self.hash) {
             Ok(()) => Ok(true),
-            Err(Password) => Ok(false),
+            Err(errors::Error::Password) => Ok(false),
             Err(e) => Err(PRError::from(e)),
         }
     }

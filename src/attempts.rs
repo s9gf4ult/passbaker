@@ -57,24 +57,21 @@ impl PasswordAttempts {
         let consComplete = seedComplete.and_then(|seed| {
             opts.consolidation.completion.and_then(|cons| { Some(seed + cons) })
         }) ;
-        let retentionComplete = consComplete.and_then(|cons| {
-            opts.retention.completion.and_then(|ret| { Some(cons + ret)})
-        }) ;
 
         for attempt in &self.0 {
-            if let Success = &attempt.result {
+            if let AttemptResult::Success = &attempt.result {
                 successful += 1 ;
             };
             match &stage {
-                Seed => match seedComplete {
+                Stage::Seed => match seedComplete {
                     Some(complete) if successful >= complete => {
-                        let stage = Stage::Consolidate ;
+                        stage = Stage::Consolidate ;
                     },
                     _ => (),
                 },
-                Consolidate => match consComplete {
+                Stage::Consolidate => match consComplete {
                     Some(complete) if successful >= complete => {
-                        let stage = Stage::Retent ;
+                        stage = Stage::Retent ;
                     },
                     _ => (),
                 },
@@ -82,11 +79,11 @@ impl PasswordAttempts {
             } ;
             let timings = opts.stage_timings(&stage) ;
             let factor = match &attempt.result {
-                Success => timings.succFactor,
-                Miss =>    timings.missFactor,
+                AttemptResult::Success => timings.succ_factor,
+                AttemptResult::Miss =>    timings.miss_factor,
             } ;
             let prevSecs = duration.num_seconds() as f64 ;
-            let newSecs: i64 = timings.maxInterval.min(
+            let newSecs: i64 = timings.max_interval.min(
                 (factor * prevSecs).round() as u64
             ).try_into()? ;
             duration = Duration::seconds(newSecs) ;

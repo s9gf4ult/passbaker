@@ -21,10 +21,10 @@ use home::home_dir ;
 struct ConsoleInter ;
 
 impl Interactor for ConsoleInter {
-    fn showMessage(&self, s: &str) {
+    fn show_message(&self, s: &str) {
         print!("{}\n", s) ;
     }
-    fn readPassword(&self) -> String {
+    fn read_password(&self) -> String {
         read_password_from_tty(Some("Password: ")).unwrap()
     }
 }
@@ -45,7 +45,7 @@ fn main() -> Result<(), PRError> {
                 &i,
                 name,
             )? ;
-            pass.seedCyccle(&home, &i)? ;
+            pass.seed_cycle(&home, &i)? ;
             Ok(())
         },
         Cli::Repeat {..} => {
