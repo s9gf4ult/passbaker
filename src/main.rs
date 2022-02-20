@@ -1,3 +1,5 @@
+#![deny(bindings_with_variant_name)]
+
 mod pass_record ;
 mod cli ;
 mod options ;
