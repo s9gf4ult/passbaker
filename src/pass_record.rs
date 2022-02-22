@@ -4,7 +4,6 @@ use std:: {
     path::{Path, PathBuf},
     thread::sleep,
     default::Default,
-    todo,
     fs::*,
     time::Duration,
 } ;
@@ -95,8 +94,8 @@ impl <'a> PassRecord<'a> {
                     result: AttemptResult::Success,
                 });
                 self.attempts.register_attempt(&dir, attempt)? ;
-        };
-        todo!() ;
+            };
+        Ok(())
     }
 
     fn check_work_dir(dir: &Path) -> Result<(), PRError> {
