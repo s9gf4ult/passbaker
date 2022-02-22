@@ -1,13 +1,7 @@
-use password_hash:: {
-
-    errors as password_hash_errors
-} ;
-use toml::ser::Error as TomlError ;
 use csv;
-use std:: {
-    io, num::TryFromIntError,
-} ;
-
+use password_hash::errors as password_hash_errors;
+use std::{io, num::TryFromIntError};
+use toml::ser::Error as TomlError;
 
 #[derive(Debug)]
 pub enum PRError {
@@ -20,22 +14,31 @@ pub enum PRError {
 }
 
 impl From<password_hash_errors::Error> for PRError {
-    fn from(pe: password_hash_errors::Error) -> PRError { PRError::PasswordHashError(pe) }
+    fn from(pe: password_hash_errors::Error) -> PRError {
+        PRError::PasswordHashError(pe)
+    }
 }
 
 impl From<io::Error> for PRError {
-    fn from(pe: io::Error) -> PRError { PRError::IOError(pe) }
+    fn from(pe: io::Error) -> PRError {
+        PRError::IOError(pe)
+    }
 }
 
 impl From<TomlError> for PRError {
-    fn from(e: TomlError) -> PRError { PRError::TomlError(e) }
+    fn from(e: TomlError) -> PRError {
+        PRError::TomlError(e)
+    }
 }
 
 impl From<csv::Error> for PRError {
-    fn from(e: csv::Error) -> PRError { PRError::CsvError(e) }
+    fn from(e: csv::Error) -> PRError {
+        PRError::CsvError(e)
+    }
 }
 
 impl From<TryFromIntError> for PRError {
-    fn from(e: TryFromIntError) -> PRError { PRError::IntError(e) }
-
+    fn from(e: TryFromIntError) -> PRError {
+        PRError::IntError(e)
+    }
 }
