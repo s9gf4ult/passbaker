@@ -1,15 +1,13 @@
-pub use clap::Parser ;
+pub use clap::Parser;
 
-
-#[derive(Debug)]
-#[derive(Parser)]
+#[derive(Debug, Parser)]
 pub enum Cli {
     New {
         #[clap(help = "Name for new record")]
-        name: String
+        name: String,
     },
     Repeat {
         #[clap(help = "Choose only one record to repeat if set")]
-        name: Option<String>
-    }
+        name: Option<String>,
+    },
 }
